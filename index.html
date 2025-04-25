@@ -433,10 +433,10 @@
     <section id="dashboard" class="mb-5 pb-5">
       <h2 class="boxHeading">Real-Time Water Quality Data</h2>
       <div class="row">
-        <div class="col-lg-8 mx-auto text-center mb-4">
+        <div class="col-lg-8 mx-auto text-center mb-3">
           <div class="d-inline-flex align-items-center">
             <span class="badge bg-success me-2 pulse-animation" style="width: 10px; height: 10px; border-radius: 50%;"></span>
-            <p class="lead mb-0">Live data updates every 3 seconds</p>
+            <p class="mb-0">Current time: <span id="current-time" class="fw-bold"></span></p>
           </div>
         </div>
       </div>
@@ -495,6 +495,7 @@
                 </div>
               </div>
 
+              <h5 class="text-primary mb-3">Water Quality Data <small class="text-muted">(Real-time timestamps)</small></h5>
               <canvas id="waterQualityChart" height="300"></canvas>
             </div>
           </div>
@@ -978,21 +979,39 @@
 
   <!-- Scripts -->
   <script>
-    // Initialize empty data arrays for real-time data
-    const maxDataPoints = 5; // Number of data points to show on chart
-
-    // Base values for each location (these will be used to generate realistic variations)
-    const locationBaseValues = {
-      'all': { pH: 7.2, oxygen: 6.8 },
-      'haridwar': { pH: 7.0, oxygen: 6.3 },
-      'kanpur': { pH: 7.5, oxygen: 6.5 },
-      'varanasi': { pH: 6.8, oxygen: 7.2 },
-      'prayagraj': { pH: 7.2, oxygen: 6.0 },
-      'patna': { pH: 7.4, oxygen: 6.2 },
-      'kolkata': { pH: 7.4, oxygen: 5.8 }
+    // Base water quality data values by location (we'll keep the values but update the timestamps)
+    const baseWaterQualityData = {
+      'all': {
+        pHData: [7.5, 7.2, 6.9, 7.0, 6.8],
+        oxygenData: [6.5, 6.8, 7.0, 6.9, 7.2]
+      },
+      'haridwar': {
+        pHData: [7.1, 7.0, 6.9, 7.0, 7.0],
+        oxygenData: [6.4, 6.3, 6.2, 6.3, 6.3]
+      },
+      'kanpur': {
+        pHData: [7.6, 7.5, 7.4, 7.5, 7.5],
+        oxygenData: [6.6, 6.5, 6.4, 6.5, 6.5]
+      },
+      'varanasi': {
+        pHData: [6.9, 6.8, 6.7, 6.8, 6.8],
+        oxygenData: [7.3, 7.2, 7.1, 7.2, 7.2]
+      },
+      'prayagraj': {
+        pHData: [7.3, 7.2, 7.1, 7.2, 7.2],
+        oxygenData: [6.1, 6.0, 5.9, 6.0, 6.0]
+      },
+      'patna': {
+        pHData: [7.5, 7.4, 7.3, 7.4, 7.4],
+        oxygenData: [6.3, 6.2, 6.1, 6.2, 6.2]
+      },
+      'kolkata': {
+        pHData: [7.5, 7.4, 7.3, 7.4, 7.4],
+        oxygenData: [5.9, 5.8, 5.7, 5.8, 5.8]
+      }
     };
 
-    // Initialize water quality data structure with empty arrays
+    // Initialize water quality data with real-time timestamps
     const waterQualityData = {
       'all': { labels: [], pHData: [], oxygenData: [] },
       'haridwar': { labels: [], pHData: [], oxygenData: [] },
@@ -1003,52 +1022,61 @@
       'kolkata': { labels: [], pHData: [], oxygenData: [] }
     };
 
-    // Function to generate a random variation within a range
-    function getRandomVariation(min, max) {
-      return Math.random() * (max - min) + min;
+    // Function to generate timestamps with specified intervals
+    function generateTimeLabels(count, intervalMinutes) {
+      const labels = [];
+      const now = new Date();
+
+      // Start with the current time and go backwards
+      for (let i = count - 1; i >= 0; i--) {
+        const time = new Date(now - i * intervalMinutes * 60000);
+        const hours = time.getHours().toString().padStart(2, '0');
+        const minutes = time.getMinutes().toString().padStart(2, '0');
+        const seconds = time.getSeconds().toString().padStart(2, '0');
+        labels.push(`${hours}:${minutes}:${seconds}`);
+      }
+
+      return labels;
     }
 
-    // Function to update data with new readings
-    function updateWaterQualityData() {
-      const now = new Date();
-      const timeString = now.getHours().toString().padStart(2, '0') + ':' +
-                         now.getMinutes().toString().padStart(2, '0') + ':' +
-                         now.getSeconds().toString().padStart(2, '0');
+    // Initialize data with real-time timestamps
+    function initializeRealTimeData() {
+      // Generate 5 time labels with 2-minute intervals
+      const timeLabels = generateTimeLabels(5, 2);
 
-      // Update data for each location
+      // Initialize each location's data with these timestamps
       Object.keys(waterQualityData).forEach(location => {
-        // Add new time label
-        waterQualityData[location].labels.push(timeString);
+        waterQualityData[location].labels = [...timeLabels];
+        waterQualityData[location].pHData = [...baseWaterQualityData[location].pHData];
+        waterQualityData[location].oxygenData = [...baseWaterQualityData[location].oxygenData];
+      });
+    }
 
-        // Generate realistic variations based on base values
-        const baseValues = locationBaseValues[location];
-        const newPH = baseValues.pH + getRandomVariation(-0.2, 0.2);
-        const newOxygen = baseValues.oxygen + getRandomVariation(-0.3, 0.3);
+    // Initialize the data
+    initializeRealTimeData();
 
-        // Add new data points
-        waterQualityData[location].pHData.push(parseFloat(newPH.toFixed(1)));
-        waterQualityData[location].oxygenData.push(parseFloat(newOxygen.toFixed(1)));
+    // Update the timestamps every minute
+    setInterval(() => {
+      // Generate new timestamps
+      const timeLabels = generateTimeLabels(5, 2);
 
-        // Keep only the last maxDataPoints data points
-        if (waterQualityData[location].labels.length > maxDataPoints) {
-          waterQualityData[location].labels.shift();
-          waterQualityData[location].pHData.shift();
-          waterQualityData[location].oxygenData.shift();
-        }
+      // Update each location's timestamps
+      Object.keys(waterQualityData).forEach(location => {
+        waterQualityData[location].labels = [...timeLabels];
       });
 
-      // Update current selected location data
-      updateChart(currentLocation);
-    }
-
-    // Initialize with current time data
-    let currentLocation = 'all';
-    updateWaterQualityData();
+      // Update the chart if it exists
+      if (waterQualityChart) {
+        waterQualityChart.data.labels = waterQualityData[currentLocation || 'all'].labels;
+        waterQualityChart.update();
+      }
+    }, 60000); // Update every minute
 
     // Initialize chart with default data (all locations)
     let labels = waterQualityData.all.labels;
     let pHData = waterQualityData.all.pHData;
     let oxygenData = waterQualityData.all.oxygenData;
+    let currentLocation = 'all';
 
     const ctx = document.getElementById('waterQualityChart').getContext('2d');
     let waterQualityChart = new Chart(ctx, {
@@ -1289,19 +1317,23 @@
 
         if (selectedCity === '') {
           // Show data for all locations
-          currentLocation = 'all';
           updateChart('all');
           selectedLocationData.style.display = 'none';
         } else {
           // Show data for selected city
-          currentLocation = selectedCity;
           updateChart(selectedCity);
+
+          // Display current values
+          const selectedOption = citySelect.options[citySelect.selectedIndex];
+          phValue.textContent = selectedOption.dataset.ph;
+          oxygenValue.textContent = selectedOption.dataset.oxygen + ' mg/L';
           selectedLocationData.style.display = 'flex';
         }
       });
 
       // Function to update chart with data for selected location
       function updateChart(location) {
+        currentLocation = location;
         const data = waterQualityData[location];
 
         // Update chart data
@@ -1310,25 +1342,12 @@
         waterQualityChart.data.datasets[1].data = data.oxygenData;
         waterQualityChart.update();
 
-        // Update current values display if a specific location is selected
-        if (location !== 'all' && selectedLocationData.style.display !== 'none') {
-          // Get the latest values
-          const latestPH = data.pHData[data.pHData.length - 1];
-          const latestOxygen = data.oxygenData[data.oxygenData.length - 1];
-
-          // Update the display
-          phValue.textContent = latestPH;
-          oxygenValue.textContent = latestOxygen + ' mg/L';
-
-          // Update color based on values (red if outside normal range)
-          phValue.style.color = (latestPH < 6.5 || latestPH > 8.5) ? '#dc3545' : '#1a73e8';
-          oxygenValue.style.color = (latestOxygen < 5.0) ? '#dc3545' : '#1a73e8';
+        // Update the chart title to show it's real-time data
+        const chartTitle = document.querySelector('.card-body h5');
+        if (chartTitle) {
+          chartTitle.innerHTML = `Water Quality Data <small class="text-muted">(Real-time timestamps)</small>`;
         }
       }
-
-      // Set up real-time data updates
-      const updateInterval = 3000; // Update every 3 seconds
-      setInterval(updateWaterQualityData, updateInterval);
     });
   </script>
 
@@ -1449,6 +1468,21 @@
           behavior: 'smooth'
         });
       });
+
+      // Real-time clock update
+      const currentTimeElement = document.getElementById('current-time');
+
+      function updateCurrentTime() {
+        const now = new Date();
+        const hours = now.getHours().toString().padStart(2, '0');
+        const minutes = now.getMinutes().toString().padStart(2, '0');
+        const seconds = now.getSeconds().toString().padStart(2, '0');
+        currentTimeElement.textContent = `${hours}:${minutes}:${seconds}`;
+      }
+
+      // Update time immediately and then every second
+      updateCurrentTime();
+      setInterval(updateCurrentTime, 1000);
 
       // Enhanced Map Interaction
       const mapContainer = document.getElementById('mapContainer');
