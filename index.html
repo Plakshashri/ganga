@@ -1,0 +1,1490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>River Health Monitoring Dashboard</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet">
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- AOS Animation Library -->
+  <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+</head>
+
+<style>
+    :root {
+        --primary-color: #1a73e8;
+        --secondary-color: #34a853;
+        --accent-color: #4285f4;
+        --text-color: #333;
+        --light-text: #666;
+        --background-color: #f8f9fa;
+        --card-bg: #ffffff;
+        --border-radius: 12px;
+        --box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+        --transition: all 0.3s ease;
+        --footer-bg: #212529;
+        --footer-text: #ffffff;
+    }
+
+    [data-theme="dark"] {
+        --primary-color: #4285f4;
+        --secondary-color: #34a853;
+        --accent-color: #5f9ea0;
+        --text-color: #f0f0f0;
+        --light-text: #cccccc;
+        --background-color: #121212;
+        --card-bg: #1e1e1e;
+        --box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+        --footer-bg: #0a0a0a;
+        --footer-text: #f0f0f0;
+    }
+
+    /* Preloader */
+    .preloader {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: var(--background-color);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+        transition: opacity 0.5s ease-out;
+    }
+
+    .preloader.fade-out {
+        opacity: 0;
+    }
+
+    .loader {
+        width: 50px;
+        height: 50px;
+        border: 5px solid rgba(0, 0, 0, 0.1);
+        border-radius: 50%;
+        border-top-color: var(--primary-color);
+        animation: spin 1s ease-in-out infinite;
+    }
+
+    @keyframes spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+    body {
+        font-family: 'Poppins', sans-serif;
+        color: var(--text-color);
+        background-color: var(--background-color);
+        line-height: 1.6;
+        transition: background-color 0.3s ease, color 0.3s ease;
+    }
+
+    /* Dark Mode Toggle */
+    .theme-toggle {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        background-color: var(--primary-color);
+        color: white;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        cursor: pointer;
+        z-index: 999;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        transition: var(--transition);
+    }
+
+    .theme-toggle:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 15px rgba(0, 0, 0, 0.25);
+    }
+
+    /* Back to Top Button */
+    .back-to-top {
+        position: fixed;
+        bottom: 80px;
+        right: 20px;
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        background-color: var(--secondary-color);
+        color: white;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        cursor: pointer;
+        z-index: 999;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        transition: var(--transition);
+        opacity: 0;
+        visibility: hidden;
+    }
+
+    .back-to-top.visible {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    .back-to-top:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 15px rgba(0, 0, 0, 0.25);
+    }
+
+    h1, h2, h3, h4, h5, h6 {
+        font-family: 'Playfair Display', serif;
+        color: var(--text-color);
+    }
+
+    /* Table Styling */
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 2rem 0;
+        border-radius: var(--border-radius);
+        overflow: hidden;
+        box-shadow: var(--box-shadow);
+    }
+
+    table, th, td {
+        border: none;
+    }
+
+    th, td {
+        padding: 15px;
+        text-align: center;
+    }
+
+    th {
+        background-color: var(--primary-color);
+        color: white;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.9rem;
+        letter-spacing: 1px;
+    }
+
+    tr:nth-child(even) {
+        background-color: rgba(0, 0, 0, 0.02);
+    }
+
+    tr {
+        transition: var(--transition);
+    }
+
+    tr:hover {
+        background-color: rgba(0, 0, 0, 0.05);
+    }
+
+    /* Links */
+    .link {
+        margin-bottom: 2rem;
+        text-align: center;
+    }
+
+    .link a {
+        text-decoration: none;
+        font-size: 1.2rem;
+        color: var(--primary-color);
+        font-weight: 600;
+        transition: var(--transition);
+        display: inline-block;
+        padding: 10px 20px;
+        border: 2px solid var(--primary-color);
+        border-radius: 30px;
+    }
+
+    .link a:hover {
+        background-color: var(--primary-color);
+        color: white;
+        transform: translateY(-3px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+    }
+
+    .linkk a {
+        text-decoration: none;
+        color: var(--primary-color);
+        font-weight: 500;
+        transition: var(--transition);
+    }
+
+    .linkk a:hover {
+        color: var(--secondary-color);
+    }
+
+    /* Form Styling */
+    form .btn {
+        background-color: var(--primary-color);
+        border: none;
+        padding: 12px 30px;
+        border-radius: 30px;
+        font-weight: 600;
+        transition: var(--transition);
+    }
+
+    form .btn:hover {
+        background-color: var(--secondary-color);
+        transform: translateY(-3px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+    }
+
+    .form-control {
+        border: 1px solid #e1e1e1;
+        padding: 15px;
+        border-radius: 8px;
+        transition: var(--transition);
+    }
+
+    .form-control:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 0.2rem rgba(26, 115, 232, 0.25);
+    }
+
+    /* Section Styling */
+    .boxHeading {
+        text-align: center;
+        margin-bottom: 2rem;
+        font-size: 2.5rem;
+        font-weight: 700;
+        position: relative;
+        padding-bottom: 1rem;
+    }
+
+    .boxHeading:after {
+        content: '';
+        display: block;
+        width: 70px;
+        height: 4px;
+        background: var(--primary-color);
+        margin: 15px auto 0;
+        border-radius: 2px;
+    }
+
+    /* Card Styling */
+    .card-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 30px;
+        margin-top: 2rem;
+    }
+
+    .card {
+        background: var(--card-bg);
+        border-radius: var(--border-radius);
+        box-shadow: var(--box-shadow);
+        overflow: hidden;
+        transition: var(--transition);
+        border: none;
+    }
+
+    .card:hover {
+        transform: translateY(-10px);
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+    }
+
+    .card img {
+        width: 100%;
+        height: 220px;
+        object-fit: cover;
+        border-top-left-radius: var(--border-radius);
+        border-top-right-radius: var(--border-radius);
+    }
+
+    .card-body {
+        padding: 25px;
+    }
+
+    .card h3 {
+        font-size: 1.5rem;
+        margin-bottom: 15px;
+        color: var(--primary-color);
+    }
+
+    .card p {
+        color: var(--light-text);
+        margin-bottom: 20px;
+    }
+
+    /* Testimonials */
+    .testimonial-card {
+        position: relative;
+        padding: 30px;
+        margin-top: 30px;
+        background-color: var(--card-bg);
+        border-radius: var(--border-radius);
+        box-shadow: var(--box-shadow);
+        transition: var(--transition);
+    }
+
+    .testimonial-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+    }
+
+    .testimonial-avatar {
+        width: 70px;
+        height: 70px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 3px solid var(--primary-color);
+        margin-bottom: 15px;
+    }
+
+    .testimonial-quote {
+        font-size: 3rem;
+        color: var(--primary-color);
+        opacity: 0.2;
+        position: absolute;
+        top: 20px;
+        right: 20px;
+    }
+
+    /* Map Container */
+    #mapContainer {
+        height: 600px;
+        border-radius: var(--border-radius);
+        overflow: hidden;
+        box-shadow: var(--box-shadow);
+    }
+
+</style>
+<body>
+  <!-- Preloader -->
+  <div class="preloader">
+    <div class="loader"></div>
+  </div>
+
+  <!-- Dark Mode Toggle -->
+  <div class="theme-toggle" id="themeToggle">
+    <i class="fas fa-moon"></i>
+  </div>
+
+  <!-- Back to Top Button -->
+  <div class="back-to-top" id="backToTop">
+    <i class="fas fa-arrow-up"></i>
+  </div>
+
+  <!-- Navigation Bar -->
+  <nav class="navbar navbar-expand-lg shadow-sm sticky-top" style="background-color: var(--card-bg); transition: var(--transition);">
+    <div class="container">
+      <a class="navbar-brand" href="#">
+        <i class="fas fa-water text-primary me-2"></i>
+        <span style="font-weight: 700; color: var(--primary-color);">Ganga Health Monitor</span>
+      </a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item">
+            <a class="nav-link" href="#dashboard">Dashboard</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#objectives">Objectives</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#map">Map</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#reports">Reports</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#testimonials">Testimonials</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#suggestions">Suggestions</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <div class="hero-section" style="background-image: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)), url('https://images.unsplash.com/photo-1580401607579-f98f10a59b2a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1920&q=80'); background-size: cover; background-position: center; height: 70vh; display: flex; align-items: center; justify-content: center; color: white; text-align: center; margin-bottom: 3rem;">
+    <div class="container">
+      <h1 style="font-size: 3.5rem; font-weight: 700; margin-bottom: 1rem; color: white; text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.6);">River Health Monitoring Dashboard</h1>
+      <p style="font-size: 1.2rem; margin-bottom: 2rem; max-width: 800px; margin-left: auto; margin-right: auto;">Tracking and preserving the health of India's most sacred river through data-driven insights and community engagement</p>
+      <a href="#dashboard" class="btn btn-primary btn-lg" style="padding: 12px 30px; border-radius: 30px; font-weight: 600;">Explore Dashboard</a>
+    </div>
+  </div>
+
+  <div class="container my-5">
+    <!-- Dashboard Section -->
+    <section id="dashboard" class="mb-5 pb-5">
+      <h2 class="boxHeading">Real-Time Water Quality Data</h2>
+      <div class="row">
+        <div class="col-lg-8 mx-auto text-center mb-4">
+          <div class="d-inline-flex align-items-center">
+            <span class="badge bg-success me-2 pulse-animation" style="width: 10px; height: 10px; border-radius: 50%;"></span>
+            <p class="lead mb-0">Live data updates every 3 seconds</p>
+          </div>
+        </div>
+      </div>
+      <div class="row mb-4">
+        <div class="col-lg-10 mx-auto">
+          <div class="card shadow">
+            <div class="card-body p-4">
+              <div class="row mb-4">
+                <div class="col-md-4">
+                  <label for="stateSelect" class="form-label">Select State</label>
+                  <select class="form-select" id="stateSelect">
+                    <option value="" selected>All States</option>
+                    <option value="uttarakhand">Uttarakhand</option>
+                    <option value="up">Uttar Pradesh</option>
+                    <option value="bihar">Bihar</option>
+                    <option value="wb">West Bengal</option>
+                  </select>
+                </div>
+                <div class="col-md-4">
+                  <label for="citySelect" class="form-label">Select City</label>
+                  <select class="form-select" id="citySelect">
+                    <option value="" selected>All Cities</option>
+                    <option value="haridwar" data-state="uttarakhand" data-ph="7.0" data-oxygen="6.3">Haridwar</option>
+                    <option value="kanpur" data-state="up" data-ph="7.5" data-oxygen="6.5">Kanpur</option>
+                    <option value="varanasi" data-state="up" data-ph="6.8" data-oxygen="7.2">Varanasi</option>
+                    <option value="prayagraj" data-state="up" data-ph="7.2" data-oxygen="6.0">Prayagraj (Allahabad)</option>
+                    <option value="patna" data-state="bihar" data-ph="7.4" data-oxygen="6.2">Patna</option>
+                    <option value="kolkata" data-state="wb" data-ph="7.4" data-oxygen="5.8">Kolkata</option>
+                  </select>
+                </div>
+                <div class="col-md-4 d-flex align-items-end">
+                  <button class="btn btn-primary w-100" id="updateChartBtn">
+                    <i class="fas fa-sync-alt me-2"></i>Update Data
+                  </button>
+                </div>
+              </div>
+
+              <div id="selectedLocationData" class="row mb-4" style="display: none;">
+                <div class="col-md-6">
+                  <div class="card bg-light">
+                    <div class="card-body p-3 text-center">
+                      <h5 class="mb-1">pH Level</h5>
+                      <div class="display-4 text-primary fw-bold" id="phValue">-</div>
+                      <div class="small text-muted">Normal range: 6.5-8.5</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="card bg-light">
+                    <div class="card-body p-3 text-center">
+                      <h5 class="mb-1">Dissolved Oxygen</h5>
+                      <div class="display-4 text-primary fw-bold" id="oxygenValue">-</div>
+                      <div class="small text-muted">mg/L (minimum 5.0 required)</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <canvas id="waterQualityChart" height="300"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row mt-5">
+        <div class="col-md-6 mb-4">
+          <div class="card h-100 shadow">
+            <div class="card-body p-4">
+              <h3 class="mb-3 text-primary">Official Monitoring Dashboard</h3>
+              <p class="mb-4">Access the official government monitoring dashboard for comprehensive data on the Ganga river health and ongoing conservation efforts.</p>
+              <a href="https://gisnmcg.mowr.gov.in/pmt/nmcgpmtmain.aspx" class="btn btn-primary" target="_blank">
+                <i class="fas fa-external-link-alt me-2"></i>Visit Dashboard
+              </a>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6 mb-4">
+          <div class="card h-100 shadow">
+            <div class="card-body p-4">
+              <h3 class="mb-3 text-primary">Course of River Ganga</h3>
+              <p class="mb-3">The Ganga flows through multiple states, supporting millions of people along its course of over 2,500 kilometers.</p>
+              <div style="max-height: 400px; overflow-y: auto;">
+                <a href="https://nmcg.nic.in/images/courseofganga.JPG" target="_blank" title="Click to view full image">
+                  <img src="https://nmcg.nic.in/images/courseofganga.JPG" alt="Course of River Ganga" class="img-fluid rounded shadow-sm">
+                  <div class="text-center mt-2">
+                    <span class="badge bg-primary"><i class="fas fa-search-plus me-1"></i> Click to view full image</span>
+                  </div>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <section id="objectives" class="py-5 bg-light">
+    <div class="container">
+      <h2 class="boxHeading">Objectives of the Mission</h2>
+      <div class="card-container">
+        <div class="card shadow">
+            <img src="https://images.unsplash.com/photo-1621451537084-482c73073a0f?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80" alt="Ganga Clean-up">
+            <div class="card-body">
+              <h3>Pollution Reduction</h3>
+              <p>Reduce industrial and sewage pollution in the river by implementing advanced treatment plants and monitoring industrial waste disposal.</p>
+              <a href="https://en.wikipedia.org/wiki/Pollution_of_the_Ganges" target="_blank" class="btn btn-sm btn-outline-primary">Learn More</a>
+            </div>
+        </div>
+        <div class="card shadow">
+            <img src="https://images.unsplash.com/photo-1470770841072-f978cf4d019e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80" alt="River Basin">
+            <div class="card-body">
+              <h3>River Basin Management</h3>
+              <p>Ensure sustainable management of the Ganga basin by regulating water use, preventing over-extraction, and maintaining ecological balance.</p>
+              <a href="https://en.wikipedia.org/wiki/Ganges_Basin" target="_blank" class="btn btn-sm btn-outline-primary">Learn More</a>
+            </div>
+        </div>
+        <div class="card shadow">
+            <img src="https://images.unsplash.com/photo-1518709766631-a6a7f45921c3?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80" alt="River Cleaning">
+            <div class="card-body">
+              <h3>Riverfront Development</h3>
+              <p>Develop riverfronts with walkways, parks, and ghats to promote tourism while maintaining cleanliness and environmental sustainability.</p>
+              <a href="https://en.wikipedia.org/wiki/Ghats_in_Varanasi" target="_blank" class="btn btn-sm btn-outline-primary">Learn More</a>
+            </div>
+        </div>
+        <div class="card shadow">
+            <img src="https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80" alt="Afforestation">
+            <div class="card-body">
+              <h3>Afforestation</h3>
+              <p>Plant trees along the riverbanks to prevent erosion, improve air quality, and enhance the overall biodiversity of the river ecosystem.</p>
+              <a href="https://en.wikipedia.org/wiki/Afforestation" target="_blank" class="btn btn-sm btn-outline-primary">Learn More</a>
+            </div>
+        </div>
+        <div class="card shadow">
+            <img src="https://images.unsplash.com/photo-1529070538774-1843cb3265df?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80" alt="Public Awareness">
+            <div class="card-body">
+              <h3>Public Awareness</h3>
+              <p>Increase awareness among communities, educate citizens about river conservation, and encourage active participation in cleanup drives.</p>
+              <a href="https://en.wikipedia.org/wiki/Environmental_awareness" target="_blank" class="btn btn-sm btn-outline-primary">Learn More</a>
+            </div>
+        </div>
+        <div class="card shadow">
+            <img src="https://images.unsplash.com/photo-1473186578172-c141e6798cf4?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80" alt="Fishermen Rehabilitation">
+            <div class="card-body">
+              <h3>Livelihood Development</h3>
+              <p>Promote sustainable livelihoods for communities dependent on the river by supporting eco-friendly businesses and responsible fishing practices.</p>
+              <a href="https://en.wikipedia.org/wiki/Sustainable_livelihood_approach" target="_blank" class="btn btn-sm btn-outline-primary">Learn More</a>
+            </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+   <!-- Awareness Section -->
+   <!-- <section id="awareness" class="my-5">
+    <h2 class="boxHeading">Awareness About Ganga River</h2>
+    <div class="row">
+      <div class="col-md-4">
+        <div class="card">
+          <img src="https://t3.ftcdn.net/jpg/04/73/15/94/360_F_473159462_SoVdMKSg0NYkB6a3S7DeWUy9XDVV00Xd.jpg" class="card-img-top" alt="Ganga River">
+          <div class="card-body">
+            <h5 class="card-title">The Lifeline of India</h5>
+            <p class="card-text">"The Ganga is not just a river, it's our heritage." - Namami Gange</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card">
+          <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSXwIEj7dLe0u7UJLy-AT5iHIS3t_npLzPhhA&s" class="card-img-top" alt="Clean Ganga">
+          <div class="card-body">
+            <h5 class="card-title">Mission Clean Ganga</h5>
+            <p class="card-text">Join hands with the Namami Gange project to restore the purity of our sacred river.</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card">
+          <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRs8aFxPpS63XdMqUqMEOG7NdvpaBxhkWD8XA&s" class="card-img-top" alt="Community Effort">
+          <div class="card-body">
+            <h5 class="card-title">Community Effort</h5>
+            <p class="card-text">Together, we can achieve a cleaner and healthier Ganga for future generations.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section> -->
+
+    <!-- Map Section -->
+    <section id="map" class="py-5">
+      <div class="container">
+        <h2 class="boxHeading">Map of Ganga River</h2>
+        <div class="card shadow mb-4">
+          <div class="card-body p-0">
+            <div id="mapContainer"></div>
+          </div>
+        </div>
+        <div class="text-center mt-4">
+          <h3 class="h4 mb-3 text-primary">Cities on Banks of Ganga with Alarming Pollution Levels</h3>
+          <p class="text-muted">Click on markers to view detailed water quality data for each location</p>
+          <div class="row mt-4">
+            <div class="col-md-4 mb-3">
+              <div class="card shadow-sm h-100">
+                <div class="card-body">
+                  <h4 class="h5 mb-2"><i class="fas fa-map-marker-alt text-danger me-2"></i>Kanpur</h4>
+                  <p class="mb-0 small">Industrial pollution has severely impacted water quality with pH levels of 7.5 and dissolved oxygen at 6.5 mg/L.</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-4 mb-3">
+              <div class="card shadow-sm h-100">
+                <div class="card-body">
+                  <h4 class="h5 mb-2"><i class="fas fa-map-marker-alt text-danger me-2"></i>Varanasi</h4>
+                  <p class="mb-0 small">Religious activities and urban waste contribute to pollution with pH levels of 6.8 and dissolved oxygen at 7.2 mg/L.</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-4 mb-3">
+              <div class="card shadow-sm h-100">
+                <div class="card-body">
+                  <h4 class="h5 mb-2"><i class="fas fa-map-marker-alt text-danger me-2"></i>Patna</h4>
+                  <p class="mb-0 small">Urban sewage is a major concern with pH levels of 7.4 and dissolved oxygen at 6.2 mg/L requiring immediate attention.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+
+
+
+
+    <!-- Reports Section -->
+    <section id="reports" class="py-5 bg-light">
+      <div class="container">
+        <h2 class="boxHeading">Ganga River Status Reports</h2>
+
+        <div class="row mb-5">
+          <div class="col-lg-8 mx-auto">
+            <div class="card shadow text-center mb-4">
+              <div class="card-body p-4">
+                <h3 class="h4 mb-3 text-primary">Featured Report</h3>
+                <p class="mb-4">This comprehensive report details the current state of polluted river stretches and outlines restoration plans for improving water quality.</p>
+                <a href="https://drive.google.com/file/d/1ahbcZ8TjwVCnxvgYltGBpIGuPglSkOeg/view?usp=drivesdk" class="btn btn-primary" target="_blank">
+                  <i class="fas fa-file-pdf me-2"></i>Polluted River Stretches Report 2022
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-lg-10 mx-auto">
+            <div class="card shadow">
+              <div class="card-body p-4">
+                <h3 class="h4 mb-4 text-primary text-center">Annual Water Quality Reports</h3>
+                <div class="table-responsive">
+                  <table class="table table-hover">
+                    <thead>
+                      <tr>
+                        <th>Year</th>
+                        <th>Report Title</th>
+                        <th>Description</th>
+                        <th>Download</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>2024</td>
+                        <td>Ganga Health Assessment</td>
+                        <td>Latest comprehensive assessment of river health and pollution levels</td>
+                        <td>
+                          <a href="https://drive.google.com/file/d/1akWaBwjUgQdei_YKRH9K1V9XQI7D4TDB/view?usp=drivesdk" class="btn btn-sm btn-outline-primary" target="_blank">
+                            <i class="fas fa-download me-1"></i> Download
+                          </a>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td>2023</td>
+                        <td>Water Quality Monitoring</td>
+                        <td>Annual water quality monitoring data and analysis across key locations</td>
+                        <td>
+                          <a href="https://drive.google.com/file/d/1anQghN9SQCzv6eVmvJhRe2egrGPTOs0r/view?usp=drivesdk" class="btn btn-sm btn-outline-primary" target="_blank">
+                            <i class="fas fa-download me-1"></i> Download
+                          </a>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td>2022</td>
+                        <td>Pollution Control Progress</td>
+                        <td>Progress report on pollution control measures and their effectiveness</td>
+                        <td>
+                          <a href="https://drive.google.com/file/d/1au8NSbdqsHpY1OS2BRG8ilkeksi8TnyO/view?usp=drivesdk" class="btn btn-sm btn-outline-primary" target="_blank">
+                            <i class="fas fa-download me-1"></i> Download
+                          </a>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td>2021</td>
+                        <td>Baseline Assessment</td>
+                        <td>Baseline assessment and intervention planning for river restoration</td>
+                        <td>
+                          <a href="https://drive.google.com/file/d/1au5I3mioS0r4p4EPQgEgHyP_aL8nuDE6/view?usp=drivesdk" class="btn btn-sm btn-outline-primary" target="_blank">
+                            <i class="fas fa-download me-1"></i> Download
+                          </a>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- Testimonials Section -->
+    <section id="testimonials" class="py-5">
+      <div class="container">
+        <h2 class="boxHeading">What People Say</h2>
+        <div class="row">
+          <div class="col-lg-8 mx-auto text-center mb-4">
+            <p class="lead">Hear from environmental experts, community leaders, and citizens who are part of our mission to restore the Ganga river.</p>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-md-4 mb-4" data-aos="fade-up" data-aos-delay="100">
+            <div class="testimonial-card">
+              <i class="fas fa-quote-right testimonial-quote"></i>
+              <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Dr. Rajesh Kumar" class="testimonial-avatar">
+              <h4 class="mb-1">Dr. Rajesh Kumar</h4>
+              <p class="text-primary small mb-3">Environmental Scientist</p>
+              <p class="mb-0">The data-driven approach of this monitoring system has revolutionized how we track and address pollution in the Ganga. It's an essential tool for our research team.</p>
+            </div>
+          </div>
+
+          <div class="col-md-4 mb-4" data-aos="fade-up" data-aos-delay="200">
+            <div class="testimonial-card">
+              <i class="fas fa-quote-right testimonial-quote"></i>
+              <img src="https://randomuser.me/api/portraits/women/44.jpg" alt="Priya Sharma" class="testimonial-avatar">
+              <h4 class="mb-1">Priya Sharma</h4>
+              <p class="text-primary small mb-3">Community Organizer</p>
+              <p class="mb-0">This platform has helped us mobilize local communities by providing clear, accessible information about river health. It's empowering citizens to take action.</p>
+            </div>
+          </div>
+
+          <div class="col-md-4 mb-4" data-aos="fade-up" data-aos-delay="300">
+            <div class="testimonial-card">
+              <i class="fas fa-quote-right testimonial-quote"></i>
+              <img src="https://randomuser.me/api/portraits/men/67.jpg" alt="Vikram Singh" class="testimonial-avatar">
+              <h4 class="mb-1">Vikram Singh</h4>
+              <p class="text-primary small mb-3">Local Fisherman</p>
+              <p class="mb-0">As someone who depends on the river for my livelihood, I've seen firsthand how monitoring and conservation efforts have improved water quality in recent years.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Latest News Section -->
+    <section class="py-5 bg-light">
+      <div class="container">
+        <h2 class="boxHeading">Latest Updates</h2>
+        <div class="row">
+          <div class="col-lg-8 mx-auto text-center mb-4">
+            <p class="lead">Stay informed about the latest developments, events, and news related to Ganga river conservation.</p>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-md-4 mb-4" data-aos="fade-up">
+            <div class="card h-100">
+              <img src="https://images.unsplash.com/photo-1541427468627-a89a96e5ca1d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80" class="card-img-top" alt="News Image">
+              <div class="card-body">
+                <div class="d-flex justify-content-between mb-2">
+                  <span class="badge bg-primary">News</span>
+                  <small class="text-muted">May 15, 2024</small>
+                </div>
+                <h3 class="h5">New Water Treatment Plant Inaugurated in Kanpur</h3>
+                <p>A state-of-the-art water treatment facility has been inaugurated to address industrial pollution in one of the most affected stretches of the Ganga.</p>
+                <a href="https://en.wikipedia.org/wiki/Sewage_treatment" target="_blank" class="btn btn-sm btn-outline-primary">Read More</a>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-md-4 mb-4" data-aos="fade-up" data-aos-delay="100">
+            <div class="card h-100">
+              <img src="https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80" class="card-img-top" alt="Event Image">
+              <div class="card-body">
+                <div class="d-flex justify-content-between mb-2">
+                  <span class="badge bg-success">Event</span>
+                  <small class="text-muted">June 5, 2024</small>
+                </div>
+                <h3 class="h5">World Environment Day: Ganga Cleanup Drive</h3>
+                <p>Join thousands of volunteers across multiple cities for the annual Ganga cleanup drive on World Environment Day.</p>
+                <a href="https://en.wikipedia.org/wiki/World_Environment_Day" target="_blank" class="btn btn-sm btn-outline-primary">Read More</a>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-md-4 mb-4" data-aos="fade-up" data-aos-delay="200">
+            <div class="card h-100">
+              <img src="https://images.unsplash.com/photo-1576091160550-2173dba999ef?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80" class="card-img-top" alt="Research Image">
+              <div class="card-body">
+                <div class="d-flex justify-content-between mb-2">
+                  <span class="badge bg-info">Research</span>
+                  <small class="text-muted">April 28, 2024</small>
+                </div>
+                <h3 class="h5">New Study Shows Improvement in Biodiversity</h3>
+                <p>Recent research indicates a significant increase in aquatic biodiversity in several stretches of the Ganga river system.</p>
+                <a href="https://en.wikipedia.org/wiki/Biodiversity" target="_blank" class="btn btn-sm btn-outline-primary">Read More</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Suggestion Box -->
+    <section id="suggestions" class="py-5">
+      <div class="container">
+        <h2 class="boxHeading">Submit Your Suggestions</h2>
+
+        <div class="row">
+          <div class="col-lg-8 mx-auto">
+            <div class="card shadow">
+              <div class="card-body p-4">
+                <p class="text-center mb-4">Your ideas and suggestions can make a significant difference in our efforts to clean and preserve the Ganga river. Please share your thoughts with us.</p>
+
+                <form id="suggestionForm" class="needs-validation" novalidate>
+                  <div class="row">
+                    <div class="col-md-6 mb-3">
+                      <label for="name" class="form-label">Your Name</label>
+                      <input type="text" class="form-control" id="name" placeholder="Enter your name" required>
+                      <div class="invalid-feedback">
+                        Please provide your name.
+                      </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                      <label for="email" class="form-label">Email Address</label>
+                      <input type="email" class="form-control" id="email" placeholder="Enter your email" required>
+                      <div class="invalid-feedback">
+                        Please provide a valid email.
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="mb-3">
+                    <label for="category" class="form-label">Category</label>
+                    <select class="form-select" id="category" required>
+                      <option value="" selected disabled>Select a category</option>
+                      <option value="pollution">Pollution Control</option>
+                      <option value="awareness">Public Awareness</option>
+                      <option value="conservation">Conservation Efforts</option>
+                      <option value="technology">Technology Solutions</option>
+                      <option value="other">Other</option>
+                    </select>
+                    <div class="invalid-feedback">
+                      Please select a category.
+                    </div>
+                  </div>
+
+                  <div class="mb-4">
+                    <label for="suggestion" class="form-label">Your Suggestion</label>
+                    <textarea class="form-control" id="suggestion" name="suggestion" rows="5" placeholder="Share your ideas to clean the Ganga" required></textarea>
+                    <div class="invalid-feedback">
+                      Please provide your suggestion.
+                    </div>
+                  </div>
+
+                  <div class="text-center">
+                    <button type="submit" class="btn btn-primary px-5">
+                      <i class="fas fa-paper-plane me-2"></i>Submit Suggestion
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Footer -->
+  <footer style="background-color: var(--footer-bg); color: var(--footer-text);" class="py-5 mt-5">
+    <div class="container">
+      <div class="row">
+        <div class="col-lg-4 mb-4">
+          <h3 class="h5 mb-3">About the Project</h3>
+          <p class="mb-3">The River Health Monitoring Dashboard is dedicated to tracking and improving the health of the Ganga river through data-driven insights and community engagement.</p>
+          <p class="mb-0 small opacity-75">A collaborative initiative by environmental agencies, research institutions, and concerned citizens.</p>
+        </div>
+        <div class="col-lg-4 mb-4">
+          <h3 class="h5 mb-3">Quick Links</h3>
+          <ul class="list-unstyled">
+            <li class="mb-2"><a href="#dashboard" class="text-decoration-none" style="color: var(--footer-text); opacity: 0.75;"><i class="fas fa-chevron-right me-1 small"></i> Dashboard</a></li>
+            <li class="mb-2"><a href="#objectives" class="text-decoration-none" style="color: var(--footer-text); opacity: 0.75;"><i class="fas fa-chevron-right me-1 small"></i> Objectives</a></li>
+            <li class="mb-2"><a href="#map" class="text-decoration-none" style="color: var(--footer-text); opacity: 0.75;"><i class="fas fa-chevron-right me-1 small"></i> Map</a></li>
+            <li class="mb-2"><a href="#reports" class="text-decoration-none" style="color: var(--footer-text); opacity: 0.75;"><i class="fas fa-chevron-right me-1 small"></i> Reports</a></li>
+            <li class="mb-2"><a href="#testimonials" class="text-decoration-none" style="color: var(--footer-text); opacity: 0.75;"><i class="fas fa-chevron-right me-1 small"></i> Testimonials</a></li>
+            <li class="mb-2"><a href="#suggestions" class="text-decoration-none" style="color: var(--footer-text); opacity: 0.75;"><i class="fas fa-chevron-right me-1 small"></i> Suggestions</a></li>
+          </ul>
+        </div>
+        <div class="col-lg-4 mb-4">
+          <h3 class="h5 mb-3">Contact Us</h3>
+          <p class="mb-2"><i class="fas fa-envelope me-2 text-primary"></i> contact@gangahealth.org</p>
+          <p class="mb-2"><i class="fas fa-phone me-2 text-primary"></i> +91 1234567890</p>
+          <p class="mb-4"><i class="fas fa-map-marker-alt me-2 text-primary"></i> New Delhi, India</p>
+          <div class="d-flex gap-3">
+            <a href="#" style="color: var(--footer-text);"><i class="fab fa-facebook-f"></i></a>
+            <a href="#" style="color: var(--footer-text);"><i class="fab fa-twitter"></i></a>
+            <a href="#" style="color: var(--footer-text);"><i class="fab fa-instagram"></i></a>
+            <a href="#" style="color: var(--footer-text);"><i class="fab fa-linkedin-in"></i></a>
+          </div>
+        </div>
+      </div>
+      <hr class="my-4 opacity-25">
+      <div class="row">
+        <div class="col-md-6 text-center text-md-start">
+          <p class="mb-0 opacity-75">&copy; 2024 River Health Monitoring Dashboard. All rights reserved.</p>
+        </div>
+        <div class="col-md-6 text-center text-md-end">
+          <a href="#" class="text-decoration-none me-3" style="color: var(--footer-text); opacity: 0.75;">Privacy Policy</a>
+          <a href="#" class="text-decoration-none" style="color: var(--footer-text); opacity: 0.75;">Terms of Service</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- AOS Animation Library -->
+  <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+
+  <!-- Scripts -->
+  <script>
+    // Initialize empty data arrays for real-time data
+    const maxDataPoints = 5; // Number of data points to show on chart
+
+    // Base values for each location (these will be used to generate realistic variations)
+    const locationBaseValues = {
+      'all': { pH: 7.2, oxygen: 6.8 },
+      'haridwar': { pH: 7.0, oxygen: 6.3 },
+      'kanpur': { pH: 7.5, oxygen: 6.5 },
+      'varanasi': { pH: 6.8, oxygen: 7.2 },
+      'prayagraj': { pH: 7.2, oxygen: 6.0 },
+      'patna': { pH: 7.4, oxygen: 6.2 },
+      'kolkata': { pH: 7.4, oxygen: 5.8 }
+    };
+
+    // Initialize water quality data structure with empty arrays
+    const waterQualityData = {
+      'all': { labels: [], pHData: [], oxygenData: [] },
+      'haridwar': { labels: [], pHData: [], oxygenData: [] },
+      'kanpur': { labels: [], pHData: [], oxygenData: [] },
+      'varanasi': { labels: [], pHData: [], oxygenData: [] },
+      'prayagraj': { labels: [], pHData: [], oxygenData: [] },
+      'patna': { labels: [], pHData: [], oxygenData: [] },
+      'kolkata': { labels: [], pHData: [], oxygenData: [] }
+    };
+
+    // Function to generate a random variation within a range
+    function getRandomVariation(min, max) {
+      return Math.random() * (max - min) + min;
+    }
+
+    // Function to update data with new readings
+    function updateWaterQualityData() {
+      const now = new Date();
+      const timeString = now.getHours().toString().padStart(2, '0') + ':' +
+                         now.getMinutes().toString().padStart(2, '0') + ':' +
+                         now.getSeconds().toString().padStart(2, '0');
+
+      // Update data for each location
+      Object.keys(waterQualityData).forEach(location => {
+        // Add new time label
+        waterQualityData[location].labels.push(timeString);
+
+        // Generate realistic variations based on base values
+        const baseValues = locationBaseValues[location];
+        const newPH = baseValues.pH + getRandomVariation(-0.2, 0.2);
+        const newOxygen = baseValues.oxygen + getRandomVariation(-0.3, 0.3);
+
+        // Add new data points
+        waterQualityData[location].pHData.push(parseFloat(newPH.toFixed(1)));
+        waterQualityData[location].oxygenData.push(parseFloat(newOxygen.toFixed(1)));
+
+        // Keep only the last maxDataPoints data points
+        if (waterQualityData[location].labels.length > maxDataPoints) {
+          waterQualityData[location].labels.shift();
+          waterQualityData[location].pHData.shift();
+          waterQualityData[location].oxygenData.shift();
+        }
+      });
+
+      // Update current selected location data
+      updateChart(currentLocation);
+    }
+
+    // Initialize with current time data
+    let currentLocation = 'all';
+    updateWaterQualityData();
+
+    // Initialize chart with default data (all locations)
+    let labels = waterQualityData.all.labels;
+    let pHData = waterQualityData.all.pHData;
+    let oxygenData = waterQualityData.all.oxygenData;
+
+    const ctx = document.getElementById('waterQualityChart').getContext('2d');
+    let waterQualityChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [
+          {
+            label: 'pH Level',
+            data: pHData,
+            borderColor: '#1a73e8',
+            backgroundColor: 'rgba(26, 115, 232, 0.1)',
+            borderWidth: 3,
+            tension: 0.4,
+            pointRadius: 4,
+            pointBackgroundColor: '#1a73e8',
+            fill: true
+          },
+          {
+            label: 'Dissolved Oxygen',
+            data: oxygenData,
+            borderColor: '#34a853',
+            backgroundColor: 'rgba(52, 168, 83, 0.1)',
+            borderWidth: 3,
+            tension: 0.4,
+            pointRadius: 4,
+            pointBackgroundColor: '#34a853',
+            fill: true
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: {
+            position: 'top',
+            labels: {
+              font: {
+                family: 'Poppins',
+                size: 12
+              },
+              padding: 20
+            }
+          },
+          tooltip: {
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            padding: 12,
+            titleFont: {
+              family: 'Poppins',
+              size: 14
+            },
+            bodyFont: {
+              family: 'Poppins',
+              size: 13
+            }
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: false,
+            grid: {
+              color: 'rgba(0, 0, 0, 0.05)'
+            },
+            ticks: {
+              font: {
+                family: 'Poppins'
+              }
+            }
+          },
+          x: {
+            grid: {
+              color: 'rgba(0, 0, 0, 0.05)'
+            },
+            ticks: {
+              font: {
+                family: 'Poppins'
+              }
+            }
+          }
+        }
+      }
+    });
+
+    // Initialize Map using Leaflet.js
+    const map = L.map('mapContainer').setView([27.0, 83.0], 6); // Center map at coordinates (27.0, 83.0) with zoom level 6
+
+    // Set up the OpenStreetMap tile layer
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+
+    // Custom popup style
+    const customPopup = {
+      'maxWidth': '300',
+      'className' : 'custom-popup'
+    }
+
+    // Custom icon
+    const riverIcon = L.icon({
+      iconUrl: 'https://cdn-icons-png.flaticon.com/512/2776/2776000.png',
+      iconSize: [32, 32],
+      iconAnchor: [16, 32],
+      popupAnchor: [0, -32]
+    });
+
+    // Add markers with custom icons and styled popups
+    L.marker([29.9497, 78.1642], {icon: riverIcon}).addTo(map)
+      .bindPopup("<div class='popup-content'><h3>Haridwar</h3><p>Holy city on the banks of the Ganga</p><div class='water-quality'><div><strong>pH:</strong> 7.0</div><div><strong>Dissolved Oxygen:</strong> 6.3 mg/L</div></div></div>", customPopup);
+
+    L.marker([26.4499, 80.3319], {icon: riverIcon}).addTo(map)
+      .bindPopup("<div class='popup-content'><h3>Kanpur</h3><p>Industrial city on the banks of the Ganga River</p><div class='water-quality'><div><strong>pH:</strong> 7.5</div><div><strong>Dissolved Oxygen:</strong> 6.5 mg/L</div></div></div>", customPopup);
+
+    L.marker([22.5726, 88.3639], {icon: riverIcon}).addTo(map)
+      .bindPopup("<div class='popup-content'><h3>Kolkata</h3><p>Located on the Hooghly River</p><div class='water-quality'><div><strong>pH:</strong> 7.4</div><div><strong>Dissolved Oxygen:</strong> 5.8 mg/L</div></div></div>", customPopup);
+
+    L.marker([25.4358, 81.8463], {icon: riverIcon}).addTo(map)
+      .bindPopup("<div class='popup-content'><h3>Prayagraj (Allahabad)</h3><p>Confluence of the Ganga and Yamuna</p><div class='water-quality'><div><strong>pH:</strong> 7.2</div><div><strong>Dissolved Oxygen:</strong> 6.0 mg/L</div></div></div>", customPopup);
+
+    L.marker([25.5941, 85.1376], {icon: riverIcon}).addTo(map)
+      .bindPopup("<div class='popup-content'><h3>Patna</h3><p>Capital of Bihar on the banks of the Ganga</p><div class='water-quality'><div><strong>pH:</strong> 7.4</div><div><strong>Dissolved Oxygen:</strong> 6.2 mg/L</div></div></div>", customPopup);
+
+    L.marker([25.3176, 82.9739], {icon: riverIcon}).addTo(map)
+      .bindPopup("<div class='popup-content'><h3>Varanasi</h3><p>Historical city on the banks of the Ganga</p><div class='water-quality'><div><strong>pH:</strong> 6.8</div><div><strong>Dissolved Oxygen:</strong> 7.2 mg/L</div></div></div>", customPopup);
+
+    // Form validation
+    (() => {
+      'use strict'
+
+      // Fetch all forms that need validation
+      const forms = document.querySelectorAll('.needs-validation')
+
+      // Loop over them and prevent submission
+      Array.from(forms).forEach(form => {
+        form.addEventListener('submit', event => {
+          if (!form.checkValidity()) {
+            event.preventDefault()
+            event.stopPropagation()
+          } else {
+            event.preventDefault()
+            // Get form data
+            const name = document.getElementById('name').value;
+            const suggestion = document.getElementById('suggestion').value;
+
+            // Show success message
+            const formContainer = form.parentElement;
+            formContainer.innerHTML = `
+              <div class="text-center py-4">
+                <i class="fas fa-check-circle text-success" style="font-size: 4rem;"></i>
+                <h3 class="mt-4">Thank You, ${name}!</h3>
+                <p class="mb-4">Your suggestion has been submitted successfully. We appreciate your contribution to the Ganga river conservation efforts.</p>
+                <button type="button" class="btn btn-outline-primary" onclick="location.reload()">Submit Another Suggestion</button>
+              </div>
+            `;
+          }
+
+          form.classList.add('was-validated')
+        }, false)
+      })
+    })()
+
+    // Smooth scrolling for anchor links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener('click', function (e) {
+        e.preventDefault();
+
+        const targetId = this.getAttribute('href');
+        if(targetId === '#') return;
+
+        const targetElement = document.querySelector(targetId);
+        if(targetElement) {
+          window.scrollTo({
+            top: targetElement.offsetTop - 70,
+            behavior: 'smooth'
+          });
+        }
+      });
+    });
+
+    // Add active class to nav items on scroll
+    window.addEventListener('scroll', function() {
+      const sections = document.querySelectorAll('section');
+      const navLinks = document.querySelectorAll('.navbar-nav .nav-link');
+
+      let current = '';
+
+      sections.forEach(section => {
+        const sectionTop = section.offsetTop;
+        const sectionHeight = section.clientHeight;
+
+        if(pageYOffset >= (sectionTop - 100)) {
+          current = section.getAttribute('id');
+        }
+      });
+
+      navLinks.forEach(link => {
+        link.classList.remove('active');
+        if(link.getAttribute('href') === `#${current}`) {
+          link.classList.add('active');
+        }
+      });
+    });
+
+    // Handle state and city selection for water quality data
+    document.addEventListener('DOMContentLoaded', function() {
+      const stateSelect = document.getElementById('stateSelect');
+      const citySelect = document.getElementById('citySelect');
+      const updateChartBtn = document.getElementById('updateChartBtn');
+      const selectedLocationData = document.getElementById('selectedLocationData');
+      const phValue = document.getElementById('phValue');
+      const oxygenValue = document.getElementById('oxygenValue');
+
+      // Filter cities based on selected state
+      stateSelect.addEventListener('change', function() {
+        const selectedState = this.value;
+        const cityOptions = citySelect.querySelectorAll('option');
+
+        // Reset city selection
+        citySelect.value = '';
+
+        // Show/hide cities based on selected state
+        cityOptions.forEach(option => {
+          if (option.value === '') {
+            // Always show "All Cities" option
+            option.style.display = '';
+          } else if (selectedState === '') {
+            // Show all cities when "All States" is selected
+            option.style.display = '';
+          } else {
+            // Show only cities in the selected state
+            option.style.display = option.dataset.state === selectedState ? '' : 'none';
+          }
+        });
+      });
+
+      // Update chart and display data when button is clicked
+      updateChartBtn.addEventListener('click', function() {
+        const selectedCity = citySelect.value;
+
+        if (selectedCity === '') {
+          // Show data for all locations
+          currentLocation = 'all';
+          updateChart('all');
+          selectedLocationData.style.display = 'none';
+        } else {
+          // Show data for selected city
+          currentLocation = selectedCity;
+          updateChart(selectedCity);
+          selectedLocationData.style.display = 'flex';
+        }
+      });
+
+      // Function to update chart with data for selected location
+      function updateChart(location) {
+        const data = waterQualityData[location];
+
+        // Update chart data
+        waterQualityChart.data.labels = data.labels;
+        waterQualityChart.data.datasets[0].data = data.pHData;
+        waterQualityChart.data.datasets[1].data = data.oxygenData;
+        waterQualityChart.update();
+
+        // Update current values display if a specific location is selected
+        if (location !== 'all' && selectedLocationData.style.display !== 'none') {
+          // Get the latest values
+          const latestPH = data.pHData[data.pHData.length - 1];
+          const latestOxygen = data.oxygenData[data.oxygenData.length - 1];
+
+          // Update the display
+          phValue.textContent = latestPH;
+          oxygenValue.textContent = latestOxygen + ' mg/L';
+
+          // Update color based on values (red if outside normal range)
+          phValue.style.color = (latestPH < 6.5 || latestPH > 8.5) ? '#dc3545' : '#1a73e8';
+          oxygenValue.style.color = (latestOxygen < 5.0) ? '#dc3545' : '#1a73e8';
+        }
+      }
+
+      // Set up real-time data updates
+      const updateInterval = 3000; // Update every 3 seconds
+      setInterval(updateWaterQualityData, updateInterval);
+    });
+  </script>
+
+  <style>
+    /* Additional styles for map popups */
+    .custom-popup .leaflet-popup-content-wrapper {
+      border-radius: 10px;
+      padding: 0;
+      overflow: hidden;
+    }
+
+    .popup-content {
+      padding: 15px;
+    }
+
+    .popup-content h3 {
+      margin: 0 0 5px 0;
+      color: var(--primary-color);
+      font-size: 16px;
+    }
+
+    .popup-content p {
+      margin: 0 0 10px 0;
+      font-size: 13px;
+    }
+
+    .water-quality {
+      background-color: rgba(0, 0, 0, 0.03);
+      padding: 8px;
+      border-radius: 5px;
+      font-size: 12px;
+    }
+
+    /* Active nav link */
+    .navbar-nav .nav-link.active {
+      color: var(--primary-color);
+      font-weight: 600;
+    }
+
+    /* Pulse animation for live data indicator */
+    .pulse-animation {
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0% {
+        box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7);
+      }
+      70% {
+        box-shadow: 0 0 0 10px rgba(40, 167, 69, 0);
+      }
+      100% {
+        box-shadow: 0 0 0 0 rgba(40, 167, 69, 0);
+      }
+    }
+  </style>
+
+  <script>
+    // Initialize AOS animations
+    document.addEventListener('DOMContentLoaded', function() {
+      AOS.init({
+        duration: 800,
+        easing: 'ease-in-out',
+        once: true
+      });
+
+      // Preloader
+      const preloader = document.querySelector('.preloader');
+      window.addEventListener('load', function() {
+        preloader.classList.add('fade-out');
+        setTimeout(function() {
+          preloader.style.display = 'none';
+        }, 500);
+      });
+
+      // Dark Mode Toggle
+      const themeToggle = document.getElementById('themeToggle');
+      const themeIcon = themeToggle.querySelector('i');
+
+      // Check for saved theme preference
+      const savedTheme = localStorage.getItem('theme');
+      if (savedTheme === 'dark') {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        themeIcon.classList.remove('fa-moon');
+        themeIcon.classList.add('fa-sun');
+      }
+
+      themeToggle.addEventListener('click', function() {
+        const currentTheme = document.documentElement.getAttribute('data-theme');
+
+        if (currentTheme === 'dark') {
+          document.documentElement.removeAttribute('data-theme');
+          localStorage.setItem('theme', 'light');
+          themeIcon.classList.remove('fa-sun');
+          themeIcon.classList.add('fa-moon');
+        } else {
+          document.documentElement.setAttribute('data-theme', 'dark');
+          localStorage.setItem('theme', 'dark');
+          themeIcon.classList.remove('fa-moon');
+          themeIcon.classList.add('fa-sun');
+        }
+      });
+
+      // Back to Top Button
+      const backToTopBtn = document.getElementById('backToTop');
+
+      window.addEventListener('scroll', function() {
+        if (window.pageYOffset > 300) {
+          backToTopBtn.classList.add('visible');
+        } else {
+          backToTopBtn.classList.remove('visible');
+        }
+      });
+
+      backToTopBtn.addEventListener('click', function() {
+        window.scrollTo({
+          top: 0,
+          behavior: 'smooth'
+        });
+      });
+
+      // Enhanced Map Interaction
+      const mapContainer = document.getElementById('mapContainer');
+      if (mapContainer) {
+        // Add zoom controls to the map
+        map.zoomControl.setPosition('bottomright');
+
+        // Add scale control
+        L.control.scale().addTo(map);
+
+        // Add fullscreen control if available
+        if (L.control.fullscreen) {
+          L.control.fullscreen().addTo(map);
+        }
+
+        // Add layer control for different map styles if available
+        const baseMaps = {
+          "Street": L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          }),
+          "Satellite": L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+            maxZoom: 20,
+            subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+            attribution: '&copy; Google Maps'
+          })
+        };
+
+        // Set the default map
+        baseMaps["Street"].addTo(map);
+
+        // Add layer control if multiple layers are available
+        if (Object.keys(baseMaps).length > 1) {
+          L.control.layers(baseMaps).addTo(map);
+        }
+      }
+    });
+  </script>
+</body>
+</html>
